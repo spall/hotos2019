@@ -9,7 +9,94 @@
 % figures and tables should not require magnification, may contain color but should be
 % legible in black and white
 
-\documentclass[twocolumn,sigplan,10pt,review]{acmart}
+\documentclass[sigplan,10pt,review,authorversion]{acmart}\settopmatter{printfolios=true,printccs=false,printacmref=false}
+
+\citestyle{acmnumeric}
+
+% REMOVE FOR ACCEPTED
+\renewcommand\footnotetextcopyrightpermission[1]{} % removes footnote with conference information in first column
+%\pagestyle{plain}
+
+\expandafter\let\csname not=\endcsname\relax
+\expandafter\let\csname not<\endcsname\relax
+\expandafter\let\csname not>\endcsname\relax
+
+\RequirePackage{pdf14}
+\usepackage{unicode-math}
+
+\usepackage{balance}
+%% \usepackage{fixltx2e} % travis-ci has an old version of latex and needs this for \textsubscript, etc
+\usepackage{mdframed}
+%% \usepackage{booktabs}
+%% \usepackage{enumitem}
+%% \usepackage{amsmath}
+%% \usepackage{amsthm}
+%% \usepackage{color}
+%% \usepackage{calc}
+\usepackage{xspace}
+%% \usepackage{upgreek}
+\usepackage{graphicx}
+%% \usepackage{natbib}
+%% \usepackage{alltt}
+\usepackage{fancyvrb}
+%\usepackage{array}
+%% \usepackage{tabu}
+%% \usepackage{multirow}
+\usepackage{mathpartir}
+%% \usepackage{balance}
+\usepackage{subcaption}
+\usepackage{wrapfig}
+%% \usepackage{framed}
+\usepackage{colortbl}
+\usepackage{tikz}
+\usetikzlibrary{decorations.markings}
+\usetikzlibrary{arrows,shapes}
+\usetikzlibrary{positioning}
+\tikzset{
+    >=stealth,
+    %auto,
+    %node distance=3.5cm,
+    font=\scriptsize,
+    ack/.style={align=center,ellipse,draw},%circle,draw,thick,align=center},
+    minimum size=20pt
+}
+\usepackage{multicol}
+\usepackage{pgfplots}\pgfplotsset{compat=1.13}
+
+
+%% Requires:
+%% \usepackage{color}
+%% \usepackage{calc}
+%% \usepackage{xspace}
+\usepackage{pifont}
+
+\usepackage{tikz-cd}
+
+%% \usepackage{upgreek}
+
+% \usepackage{MnSymbol}
+
+\setlength{\bibsep}{1pt}
+
+%\newtheorem{theorem}{Theorem}
+%\newtheorem{lemma}{Lemma}
+%\newtheorem{definition}{Definition}
+
+\definecolor{gray}{rgb}{0.9,0.9,0.9}
+\definecolor{red}{rgb}{1,0,0}
+\newcommand{\graybox}[1]{\mbox{\setlength{\fboxsep}{0.5pt}%
+    \colorbox{gray}{$#1$}}}
+
+%\newcommand{\graybox}[1]{#1}
+
+\newcommand{\var}[1]{\mathit{#1}}
+
+\newcommand{\fixme}[1][\relax]{{\color{red}{FIXME: #1}}}
+
+
+\newcommand{\ma}[1]{\ensuremath{#1}\xspace}
+
+
 \title{Four reasons your build is slow}
 \author{Sarah Spall}
 \affiliation{Indiana University}
@@ -44,6 +131,13 @@ in some cases how to fix them.
 \maketitle
 
 \section{Introduction}
+
+\begin{Verbatim}[commandchars=\\\{\},codes={\catcode`$=3\catcode`^=7\catcode`_=8},fontsize=\small,numbers=left,xleftmargin=5mm]
+all:
+  cc in.c -o out.o
+\end{Verbatim}
+  
+
 
 \section{Analysis tool}
 \label{sec:analysis}
