@@ -17,6 +17,27 @@
 \affiliation{Indiana University}
 
 
+\begin{abstract}
+Spending time waiting for code to compile is cliche enough to be
+featured in XKCD, yet it continues to plague software
+developers. Fortunately, software builds are an embarassingly parallel
+problem, and so we can finally make use of all those extra cores---a
+happy coincidence of software complexity and hardware trends.
+
+Unfortunately, the story is not quite this rosy, as almost anyone who
+waits for software to build knows. Real build systems fail to be the
+embarassingly parallel poster child we hope for, and instead are slow
+in a wide variety of ways.
+
+To investigate this problem, we have built an automated build analysis
+tool that works for arbitrary build systems using the venerable
+\texttt{make} tool. Our analysis can predict parallel speedup, analyze
+the long pole of dependencies, determine false dependencies, and
+predict parallelism in a perfect world. We use our tool on real-world
+project to describe four problems found in actual software builds, and
+in some cases how to fix them.
+\end{abstract}
+
 
 \begin{document}
 
