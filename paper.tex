@@ -314,16 +314,42 @@ time of any target in the graph.  This is useful in the case where decreasing th
 of a single task gives the build graph a new span path which is dominated by a different also
 long running command that prevents the span of the graph from decreasing.
 
-An example of such a project with such a build is Facebook's zstd project \cite{}.  This project
-has more than one long running CC command provide over 90\% of the running time of the build's
-span.  Splitting the CC command into many parallel CC commands followed by a linking command
-and then having the tool build a new graph presented a new span that was also dominated by
-another long running CC command.
+An example of a project with such a build is Facebook's zstd project \cite{}.  If we use our tool
+to analyse the span of zstd's build, we see that the original span is dominated by a single call
+to cc.
+\begin{verbatim}
+  cc -I../lib -I../lib/common -I../lib/compress -I../lib/dictBuilder -DXXH_NAMESPACE=ZSTD_ -I../lib/legacy -DZSTD_LEGACY_SUPPORT=5 -O3 -DBACKTRACE_ENABLE=0 ../lib/common/debug.c ../lib/common/entropy_common.c ../lib/common/error_private.c ../lib/common/fse_decompress.c ../lib/common/pool.c ../lib/common/threading.c ../lib/common/xxhash.c ../lib/common/zstd_common.c ../lib/compress/fse_compress.c ../lib/compress/hist.c ../lib/compress/huf_compress.c ../lib/compress/zstd_compress.c ../lib/compress/zstd_double_fast.c ../lib/compress/zstd_fast.c ../lib/compress/zstd_lazy.c ../lib/compress/zstd_ldm.c ../lib/compress/zstd_opt.c ../lib/compress/zstdmt_compress.c ../lib/decompress/huf_decompress.c ../lib/decompress/zstd_decompress.c ../lib/dictBuilder/cover.c ../lib/dictBuilder/divsufsort.c ../lib/dictBuilder/fastcover.c ../lib/dictBuilder/zdict.c ../lib/legacy/zstd_v05.c ../lib/legacy/zstd_v06.c ../lib/legacy/zstd_v07.c zstdcli.o fileio.o bench.o datagen.o dibio.o -o zstd
+\end{verbatim}
+
+If this call is no longer part of the span, we find that the new span is similarly dominated by
+another single call to cc.
+
+\begin{verbatim}
+cc -I. -I./common -DXXH_NAMESPACE=ZSTD_ -I./legacy -DZSTD_LEGACY_SUPPORT=5 -O3 common/debug.c common/entropy_common.c common/error_private.c common/fse_decompress.c common/pool.c common/threading.c common/xxhash.c common/zstd_common.c compress/fse_compress.c compress/hist.c compress/huf_compress.c compress/zstd_compress.c compress/zstd_double_fast.c compress/zstd_fast.c compress/zstd_lazy.c compress/zstd_ldm.c compress/zstd_opt.c compress/zstdmt_compress.c decompress/huf_decompress.c decompress/zstd_decompress.c deprecated/zbuff_common.c deprecated/zbuff_compress.c deprecated/zbuff_decompress.c dictBuilder/cover.c dictBuilder/divsufsort.c dictBuilder/fastcover.c dictBuilder/zdict.c legacy/zstd_v05.c legacy/zstd_v06.c legacy/zstd_v07.c -shared -fPIC -fvisibility=hidden -Wl,-soname=libzstd.so.1 -o libzstd.so.1.3.7
+\end{verbatim}
+
+If their of these calls were members of the build's span, than our tool predicts the span would be
+7.2 seconds rather than 39 seconds or 37 seconds (todo check that time).  To test this we manually
+replaced the original calls with many calls that first compiled each file individually then later
+linked them.  % todo fill in results.
 
 \subsection{Bad OS Scaling}
 
-Some projects may exhibit ample potential parallelism, but may be limited by systems that do not
-have the resources to exploit said parallelism.  LLVM \cite{} 
+Some projects may exhibit ample potential parallelism, but even when run with more threads than
+available parallelism, predicted parallelism may not be achieved.  LLVM \cite{} is the largest
+project we analysed with a calculated work of approximately 12584 seconds, or 3.5 hours.  The
+predicted span of LLVM is 305 seconds, or 5 minutes.  This gives LLVM a parallelism of about 41.
+These calculations where made from a build of LLVM that was done not using strace.
+
+A parallelism of 41 would lead one to believe that on a machine with 32 cores LLVM should be built
+in parallel in about 5 minutes.  Our observations did not match this expectation.  When LLVM was
+built with ``-j 32'' the observed speedup was slightly over 18; see chart \ref{}.  Using work and
+span our tool can predict the potential speedup a build will experience using Brent's theorem
+\cite{}.  The lower speedup bound is predicted using Brent's theorem, which specifies that for
+P processors, \begin{math} T_P \leq T \end{math}
+
+% say something about brent's theorem
+% say something about why llvm doesnt achieve the predicted speedup
 
 % project example is LLVM:
 % say something about how LLVM is a very large project and 
