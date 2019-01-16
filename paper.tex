@@ -296,6 +296,7 @@ remove the false-dependencies discovered by the tool.
 Example: todo
 
 \subsection{Expensive command}
+\label{sec:expensive}
 
 \begin{figure}[t]
   \includegraphics[width=0.5\textwidth]{zstd-speedup}
@@ -325,29 +326,25 @@ to analyse the span of zstd's build, we see that the original span is dominated 
 to cc.
 
 \begin{Verbatim}[commandchars=\\\{\},codes={\catcode`$=3\catcode`^=7\catcode`_=8},fontsize=\small,numbers=left,xleftmargin=5mm]
-  cc -I../lib -I../lib/common -I../lib/compress -I../lib/dictBuilder 
-     -DXXH\_NAMESPACE=ZSTD\_ -I../lib/legacy -DZSTD\_LEGACY\_SUPPORT=5 -O3 
-     -DBACKTRACE\_ENABLE=0 
-     ../lib/common/debug.c ../lib/common/entropy\_common.c ../lib/common/error\_private.c 
-     ../lib/common/fse\_decompress.c ../lib/common/pool.c ../lib/common/threading.c 
-     ../lib/common/xxhash.c ../lib/common/zstd\_common.c ../lib/compress/fse\_compress.c 
-     ../lib/compress/hist.c ../lib/compress/huf\_compress.c 
-     ../lib/compress/zstd\_compress.c ../lib/compress/zstd\_double\_fast.c 
-     ../lib/compress/zstd\_fast.c ../lib/compress/zstd\_lazy.c 
-     ../lib/compress/zstd\_ldm.c ../lib/compress/zstd\_opt.c 
-     ../lib/compress/zstdmt\_compress.c ../lib/decompress/huf\_decompress.c 
-     ../lib/decompress/zstd\_decompress.c ../lib/dictBuilder/cover.c 
-     ../lib/dictBuilder/divsufsort.c ../lib/dictBuilder/fastcover.c 
-     ../lib/dictBuilder/zdict.c ../lib/legacy/zstd\_v05.c ../lib/legacy/zstd\_v06.c 
-     ../lib/legacy/zstd\_v07.c zstdcli.o fileio.o bench.o datagen.o dibio.o -o zstd
+  cc \$(FLAGS)
+  ../lib/common/debug.c
+  ../lib/common/entropy\_common.c
+  \textrm{\emph{25 more .c files}}
+  zstdcli.o fileio.o bench.o
+  datagen.o dibio.o -o zstd
 \end{Verbatim}
 
 If this call is no longer part of the span, we find that the new span is similarly dominated by
 another single call to cc.
 
-\begin{verbatim}[commandchars=\\\{\},codes={\catcode`$=3\catcode`^=7\catcode`_=8},fontsize=\small,numbers=left,xleftmargin=5mm]
-cc -I. -I./common -DXXH_NAMESPACE=ZSTD_ -I./legacy -DZSTD_LEGACY_SUPPORT=5 -O3 common/debug.c common/entropy_common.c common/error_private.c common/fse_decompress.c common/pool.c common/threading.c common/xxhash.c common/zstd_common.c compress/fse_compress.c compress/hist.c compress/huf_compress.c compress/zstd_compress.c compress/zstd_double_fast.c compress/zstd_fast.c compress/zstd_lazy.c compress/zstd_ldm.c compress/zstd_opt.c compress/zstdmt_compress.c decompress/huf_decompress.c decompress/zstd_decompress.c deprecated/zbuff_common.c deprecated/zbuff_compress.c deprecated/zbuff_decompress.c dictBuilder/cover.c dictBuilder/divsufsort.c dictBuilder/fastcover.c dictBuilder/zdict.c legacy/zstd_v05.c legacy/zstd_v06.c legacy/zstd_v07.c -shared -fPIC -fvisibility=hidden -Wl,-soname=libzstd.so.1 -o libzstd.so.1.3.7
-\end{verbatim}
+\begin{Verbatim}[commandchars=\\\{\},codes={\catcode`$=3\catcode`^=7\catcode`_=8},fontsize=\small,numbers=left,xleftmargin=5mm]
+  cc \$(FLAGS)
+  common/debug.c
+  common/entropy\_common.c
+  \textrm{\emph{28 more .c files}}
+  -shared -fPIC -fvisibility=hidden
+  -Wl,-soname=libzstd.so.1 -o libzstd.so.1.3.7
+\end{Verbatim}
 
 If neither of these calls were members of the build's span, then our tool predicts the span would be
 7.2 seconds rather than 39 seconds or 37 seconds.  To test this we manually replaced the first of
@@ -396,6 +393,65 @@ P processors, \begin{math} T_P \leq T \end{math}
 % say something about how LLVM is a very large project and 
 
 \subsection{Slow compiler}
+
+A similar issue to the one described in section \ref{sec:expensive} is when a build's
+span is dominated by the compilation of a single file.  This problem however cannot be
+solved in the makefile like the zstd issue was.  Solutions to this problem include
+breaking the file up into smaller files which can be compiled in parallel and then
+linked; or changing the compiler so that it is capable of compiling the file faster.
+A faster compiler, would have the additional benefit of not only decreasing the span
+of the project but also likely decreasing the work of the project.
+
+Google's protocol buffers project \cite{} exhibited this behavior.  It had a relatively
+long predicted span of ?? seconds, which was dominated by a call to g++ which was
+compiling a single file.  When we apply the same analysis as we applied to zstd in
+section \ref{sec:expensive}, we see that if \ref{} wasn't a part of the span, the new
+span would be ?? and would be dominated by another g++ compilation of a single file.
+And we continue this again to find that the 3 top span paths are dominated by g++
+compilations of individual files.  If none of these calls were part of the span, the
+new span of the project would be ??.  Now if the developers of protocol buffers were
+interested in increasing the parallelism of their project they would know where they
+should focus their efforts
+
+Here is a simplification of the real command run by make; it took about 40 seconds to run.
+\begin{Verbatim}[commandchars=\\\{\},codes={\catcode`$=3\catcode`^=7\catcode`_=8},fontsize=\small,numbers=left,xleftmargin=5mm]
+  g++ \$(FLAGS)
+  -o google/protobuf/descriptor.lo
+  google/protobuf/descriptor.cc
+\end{Verbatim}
+
+Here is a simplification of the real command run by make; it took about 27 seconds to run.
+\begin{Verbatim}[commandchars=\\\{\},codes={\catcode`$=3\catcode`^=7\catcode`_=8},fontsize=\small,numbers=left,xleftmargin=5mm]
+  g++ \$(FLAGS)
+  -o google/protobuf/descriptor.pb.lo
+  google/protobuf/descriptor.pb.cc
+\end{Verbatim}
+
+Here is a simplification of the real command run by make; it took about 22.5 seconds to run.
+\begin{Verbatim}[commandchars=\\\{\},codes={\catcode`$=3\catcode`^=7\catcode`_=8},fontsize=\small,numbers=left,xleftmargin=5mm]
+  g++ \$(FLAGS)
+  -o google/protobuf/compiler/cpp/cpp\_message.lo
+  google/protobuf/compiler/cpp/cpp\_message.cc
+\end{Verbatim}
+
+% so, if the problem is with compiling a single file, then we don't really have a
+% make level solution to that problem
+% user needs to do some work at the file/compiler level to create a solution
+% potential solutions include breaking the file up into smaller files which can be
+% compiled and linked in paralle
+% using a faster compiler, which would have the added benefit of likely decreasing
+% the overall work of the build as well as the span
+% maybe trying to motivate some future work here
+
+% example project is protobufs c++ version;
+% We perform the same analysis that we did in section expensive;
+% look at the top spans and what they are dominated by
+% we see that the top 3? are dominated by g++ compilations of single files
+% and if those are no longer part of the span we half our span; which would result in a
+% double speedup
+% so we now have a place to focus our energy for improvements
+% HIgh level; non make level fix; expensive section is a make level fix; should mention that
+% there maybe
 
 \section{Future work}
 
