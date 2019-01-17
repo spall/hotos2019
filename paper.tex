@@ -441,9 +441,9 @@ by make; making it unnecessary to build them again.  This cuts the effect time o
 \subsection{Unnecessarily sequential}
 \label{sec:sequential}
 
-Makefiles are a collection of rules which describe how to build targets \cite{gnumakemanual},
+Makefiles are a collection of rules which describe how to build targets,
 and each rule consists
-of a a series of prerequisites and a series of recipes which are run to build the target.  The
+of a a series of prerequisites and a series of recipes which are run to build the target \cite{gnumakemanual}.  The
 prerequisites can be built in parallel, but the recipes must be run in the order they are listed.  So,
 the author of a makefile can directly impact the potential parallelism of the build by
 how they organize their makefile.  It is possible to unnecessarily list things as recipes that
