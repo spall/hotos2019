@@ -160,6 +160,34 @@ highly-parallel systems, real software rarely makes use of the full
 capacity of the machine it is built on, despite the potential for high
 degrees of parallelism.
 
+To address this problem, numerous new build systems have been created
+(Bazel, Buck, Pants, Aegis, Shake, CMake, Ninja, ...), many purporting
+to solve or at least alleviate these problems. However, systems
+software ranging from the Linux kernel to LLVM to zlib is still built
+with \verb|make| today, suggesting that as in many areas, building new
+tools is not sufficient---we must analyze, understand, and improve use
+of existing tools as well.
+
+To accomplish this for build systems, we have developed a tool for
+analyzing \verb|make|-based builds by instrumenting them while they
+run, relying on \verb|make|'s own internal information and the use of
+\verb|strace| to analyze the behavior of the actual commands used to
+run the build. Our tool computes a dependence graph based on the
+actual behavior of the build, then prunes it with data from
+\verb|strace|. The resulting graph can accurately predict the
+potential parallelism of the build from the instrumentation, show what
+build steps cause the biggest slowdown, and answer counterfactual
+questions about the results of improving the build system.
+
+After describing our analysis tool, we present four case studies in
+reasons software might be slow to build, backed by data and analysis
+from our tool. All of the case studies are real, widely-used
+open-source projects. In some cases, we identify low-hanging fruit
+that can increase the parallelism of a build by 4x; in others we point
+to places where code organization changes could make a significant
+difference. These case studies demonstrate the benefits of a
+build-system analysis tool and point to valuable further investigation.
+
 
 
 \section{Analysis tool}
