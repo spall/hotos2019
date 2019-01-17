@@ -519,7 +519,7 @@ These calculations where made from a build of LLVM that was run without strace.
 
 A parallelism of 41 lead us to believe that when built in parallel on a machine with 32 cores,
 LLVM should build in about 5 minutes.  Our observations did not match this expectation.  When LLVM was
-built with ``-j 32'' the observed speedup was slightly over 18; see chart \ref{}.  Using work and
+built with ``-j 32'' the observed speedup was slightly over 18; see chart~\ref{fig:llvm}.  Using work and
 span our tool can predict the potential speedup a build will experience using Brent's theorem
 \cite{}.  The lower speedup bound is predicted using Brent's theorem, which specifies that for
 P processors, \begin{math} T_P \leq T \end{math}
