@@ -527,11 +527,14 @@ Google's protocol buffers project \cite{protobufs3.6.1} exhibited this behavior.
 to be about 16.7 minutes and it had a relatively
 long predicted span of 43.7 seconds, which was dominated by a call to g++ compiling
 a single file.  When the analysis applied in section \ref{sec:expensive} is applied to
-protocol buffers' build, we learn that if the code in fig. \ref{code:g++1} wasn't part of the span,
-the new span would be about 31s and would be dominated by the code in fig. \ref{code:g++2}.
+protocol buffers' build, we learn that if the code, a simplification of the real code,
+in fig. \ref{code:g++1} wasn't part of the span,
+the new span would be about 31s and would be dominated by the code in fig. \ref{code:g++2}, also
+a simplification.
 And when that
 code isn't part of the span, we learn that the new span is again dominated by another
-g++ call in the code in fig. \ref{g++3}.  If none of these g++ compilations are in the span,
+g++ call in the code in fig. \ref{g++3}, also a simplification.
+If none of these g++ compilations are in the span,
 the new span of the project is about 20s, roughtly half of the original span.
 
 If the developers of protocol buffers were interested in increasing the parallelism of
@@ -544,8 +547,7 @@ compilation of these 3 files.
   -o google/protobuf/descriptor.lo
   google/protobuf/descriptor.cc
 \end{Verbatim}
-\caption{A simplification of the real command run by make; compiles a single file and took about
-40 seconds to run and was 90\% of the span.}
+\caption{Compiles a single file and took about 40 seconds to run and was 90\% of the span.}
 \label{code:g++1}
 \end{figure}
 
@@ -555,8 +557,7 @@ compilation of these 3 files.
   -o google/protobuf/descriptor.pb.lo
   google/protobuf/descriptor.pb.cc
 \end{Verbatim}
-\caption{A simplification of the real command run by make; compiles a single file and took about
-27 seconds to run and was about 87\% of the span.}
+\caption{Compiles a single file and took about 27 seconds to run and was about 87\% of the span.}
 \label{code:g++2}
 \end{figure}
 
@@ -566,8 +567,7 @@ compilation of these 3 files.
   -o google/protobuf/compiler/cpp/cpp\_message.lo
   google/protobuf/compiler/cpp/cpp\_message.cc
 \end{Verbatim}
-\caption{A simplification of the real command run by make; compiles a single file and took about
-22.5 seconds to run and was about 90\% of the span.}
+\caption{Compiles a single file and took about 22.5 seconds to run and was about 90\% of the span.}
 \label{code:g++3}
 \end{figure}
 
