@@ -132,11 +132,28 @@ in some cases how to fix them.
 
 \section{Introduction}
 
-\begin{Verbatim}[commandchars=\\\{\},codes={\catcode`$=3\catcode`^=7\catcode`_=8},fontsize=\small,numbers=left,xleftmargin=5mm]
-all:
-  cc in.c -o out.o
-\end{Verbatim}
-  
+If you develop software, or even if you compile it, you probably run
+into software that's slow to build. This problem is such a cliche that
+it appears in comics, but it's also such a problem that companies
+routinely outfit developers with the beefiest machines possible---all
+to compile software projects faster. Fortunately, for most systems and
+languages, compiling software is a classic example of embarassing
+parallelism. As a result, developers who spend much of their time
+compiling large software projects use highly parallel systems to do so
+[cite Regehr tweet].
+
+This is perhaps best demonstrated by the classic \verb|make -j|
+command, which builds on \verb|make|~\cite{make} to execute
+dependencies in parallel, consuming as many parallel resources as are
+available. The process-oriented nature of \verb|make| and the graph
+structure of dependencies combine for easy and effective parallelism.
+
+However, this seeming solution rarely works out as well in practice as
+it does in theory. In addition to the substantial expense of
+highly-parallel systems, real software rarely makes use of the full
+capacity of the machine it is built on, despite the potential for high
+degrees of parallelism.
+
 
 
 \section{Analysis tool}
