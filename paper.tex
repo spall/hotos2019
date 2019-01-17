@@ -148,7 +148,7 @@ parallelism. As a result, developers who spend much of their time
 compiling large software projects use highly parallel systems to do so
 \cite{regehr-tweet}.
 
-This is perhaps best demonstrated by the classic \verb|make -j|
+This is perhaps best demonstrated by the  \verb|make -j|
 command, which builds on \verb|make|~\cite{make} to execute
 dependencies in parallel, consuming as many parallel resources as are
 available. The process-oriented nature of \verb|make| and the graph
@@ -163,7 +163,7 @@ degrees of parallelism.
 To address this problem, numerous new build systems have been created
 (Bazel, Buck, Pants, Aegis, Shake, CMake, Ninja, ...), many purporting
 to solve or at least alleviate these problems. However, systems
-software ranging from the Linux kernel to LLVM to zlib is still built
+ ranging from the Linux kernel to LLVM to zlib are still built
 with \verb|make| today, suggesting that as in many areas, building new
 tools is not sufficient---we must analyze, understand, and improve use
 of existing tools as well.
