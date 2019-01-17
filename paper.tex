@@ -486,43 +486,47 @@ cc \$(FLAGS) \$(OBJ\_FILES) -shared
   those mentioned in the previous section because strace inflates the running time of the
   commands it traces.
 
-\subsection{Bad scalability}
+\subsection{Poor scaling}
 \label{sec:scalability}
 
 \begin{figure}[t]
   \includegraphics[width=0.5\textwidth]{llvm-speedup-w-64}
-  \caption{A comparison of the observed speedup when LLVM was built with \emph{make -j <n> for <n> from 1 to 32},
-    to the potential speedups our tool predicted using the work and span calculations}
+  \caption{A comparison of the observed speedup when LLVM was built
+    with \emph{make -j <n> for <n> from 1 to 64}, to the potential
+    speedups our tool predicted using the work and span calculations}
   \label{fig:llvm}
 \end{figure}
 
-Some projects may exhibit ample potential parallelism but not achieve that potential
-parallelism in practice.  LLVM~\citep{LLVM:CGO04} is the largest
-project we analysed, with a calculated work of approximately 12584 seconds, or 3.5 hours, and
-a predicted span of 305 seconds, or 5 minutes, measured from a build of LLVM that was run without
-strace. With a work of 3.5 hours and a span of 5 minutes, LLVM has a parallelism of about 41.
+Some projects may exhibit ample potential parallelism but not achieve
+that potential parallelism in practice.  LLVM~\citep{LLVM:CGO04} is
+the largest project we analysed, with a calculated work of
+approximately 12584 seconds, or 3.5 hours, and a predicted span of 305
+seconds, or 5 minutes (\verb|strace| instrumentation was disabled for
+this measurement). With a work of 3.5 hours and a span of 5 minutes,
+LLVM has a parallelism of about 41.
 
-A parallelism of 41 lead us to believe that when built in parallel on a machine with 32 cores,
-LLVM would build in about 5 minutes.  Our observations however, did not match this expectation.
-In chart \ref{fig:llvm} we see two different observed speedups, indicted by the squares and
-triangles.  The squares indicate the observed speedup of LLVM when run on a machine with 32 cores,
-with \emph{make -j 1} to \emph{make -j 32}.  The triangles indicate the observed speedup when run
-on a different machine, with 32 real cores and 32 hyperthreads, with \emph{make -j n} from where
-n is most of the numbers between 1 and 32.  The dashed line indicates the upper predicted speedup,
-which is the speedup the project can't exceed.  It is apparent from the chart that LLVM fails to
-achieve this maximum predicted speedup.  The solid line represents the predicted lower speedup,
-which is the speedup the project should achieve at minimum.  And it appears in the chart that
-LLVM narrowly achieves this speedup, when built with \emph{make -j n} for most n.
+A parallelism of 41 lead us to believe that when built in parallel on
+a machine with 32 cores, LLVM would build in not that much more than 5
+minutes.  Our observations however, did not match this expectation.
+In chart \ref{fig:llvm} we see two different observed speedups,
+indicted by the squares and triangles.  The squares indicate the
+observed speedup of LLVM when run on a machine with 32 cores, with
+\emph{make -j 1} to \emph{make -j 32}.  The triangles indicate the
+observed speedup when run on a different machine, with 32 cores each
+with 2 hyperthreads, with \emph{make -j n} from where $n$ between 1
+and 64.  The dashed line and solid lines indicates the upper and lower
+bounds we would expect for parallel speedup, calculated using Brent's
+bound~\cite{brents}.  It
+is apparent from the chart that LLVM is consistently along the lower
+bound.
 
-The lower and upper speedup bounds are calculated using Brent's theorem \cite{brents}, which
-specifies upper and lower bounds on the time, $T_P$ it will take a parallel algorithm to run on P
-processors.
-
-\begin{equation*}
-  \frac{work}{P} \geq T_P \leq \frac{work}{P} + span 
-\end{equation*}
-
-
+This demonstrates that our automatic prediction is accurate out to a
+large number of parallel jobs, but also that the LLVM build fails to
+achieve as much parallel scaling as we would hope. This suggests that
+although the build system is able to provide adequate parallelism, the
+underlying Linux OS and \verb|make| job scheduling fail to take
+advantage. To enable better scaling, potential sources of contention
+such as the filesystem must be examined.
 
 
 % say something about brent's theorem
