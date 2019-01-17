@@ -116,7 +116,7 @@ featured in XKCD, yet it continues to plague software
 developers. Fortunately, software builds are an embarassingly parallel
 problem, and so we can finally make use of all those extra cores---a
 happy coincidence of software complexity and hardware trends.
-
+%
 Unfortunately, the story is not quite this rosy, as almost anyone who
 waits for software to build knows. Real build systems fail to be the
 embarassingly parallel poster child we hope for, and instead are slow
@@ -146,7 +146,7 @@ to compile software projects faster. Fortunately, for most systems and
 languages, compiling software is a classic example of embarassing
 parallelism. As a result, developers who spend much of their time
 compiling large software projects use highly parallel systems to do so
-[cite Regehr tweet].
+\cite{regehr-tweet}.
 
 This is perhaps best demonstrated by the classic \verb|make -j|
 command, which builds on \verb|make|~\cite{make} to execute
@@ -157,7 +157,7 @@ structure of dependencies combine for easy and effective parallelism.
 However, this seeming solution rarely works out as well in practice as
 it does in theory. In addition to the substantial expense of
 highly-parallel systems, real software rarely makes use of the full
-capacity of the machine it is built on, despite the potential for high
+capacity of the machine despite the potential for high
 degrees of parallelism.
 
 To address this problem, numerous new build systems have been created
@@ -194,7 +194,7 @@ build-system analysis tool and point to valuable further investigation.
 \label{sec:analysis}
 In this section we describe the tools we use to analyse make builds, diagnose problems related
 to parallelism, and identify places for improvement. In section \ref{sec:makeanalysis} we
-discuss the modified version of GNU Make \cite{gnumake4.2} we use to record enough information about a
+discuss the modified version of GNU Make \cite{gnumakemanual} we use to record enough information about a
 project's build to reconstruct the build graph during a post-mortem analysis.
 In section \ref{sec:straceinstr} we discuss how we use a slightly modified version of strace to
 record all of the system calls made during the project's build and then use the system calls
@@ -205,7 +205,7 @@ a new graph with potentially more parallelism.
 \subsection{Make analysis and instrumentation}
 \label{sec:makeanalysis}
 
-To collect the desired level of information from a run of GNU Make \cite{gnumake4.2}, we run it with the
+To collect the desired level of information from a run of GNU Make \cite{gnumakemanual}, we run it with the
 debug level of 'verbose', use our own wrappers, which print additional information, and use
 a modified version of make which prints directory and timing information for each shell command run.
 All of this information is written to a file and later used to reconstruct
@@ -508,9 +508,9 @@ These calculations where made from a build of LLVM that was run without strace.
 
 A parallelism of 41 lead us to believe that when built in parallel on a machine with 32 cores,
 LLVM should build in about 5 minutes.  Our observations did not match this expectation.  When LLVM was
-built with ``-j 32'' the observed speedup was slightly over 18; see chart \ref{}.  Using work and
+built with ``-j 32'' the observed speedup was slightly over 18; see chart~\ref{fig:llvm}.  Using work and
 span our tool can predict the potential speedup a build will experience using Brent's theorem
-\cite{}.  The lower speedup bound is predicted using Brent's theorem, which specifies that for
+\cite{brents}.  The lower speedup bound is predicted using Brent's theorem, which specifies that for
 P processors, \begin{math} T_P \leq T \end{math}
 
 % say something about brent's theorem
@@ -570,19 +570,27 @@ would be a good place to begin improving the parallelism of this build.
 % HIgh level; non make level fix; expensive section is a make level fix; should mention that
 % there maybe
 
-\section{Future work}
+\section{Conclusion}
 
-One of the limitations of this work is that currently to collect the necessary data to reconstruct
-the build graph, the project must be built using a single thread.  This is a burden for projects
-that are very long running, such as LLVM.  Additionally, building with strace causes an additional
-slowdown and inflates the running time of each shell command, which makes the raw numbers
-reported by a build graph created with strace on, inaccurate.  In the future for performance sake
-it would be good to collect the necessary information while allowing make to run in parallel with
-any number of processes.  It would also be good to know how much strace perturbs the recorded
-time of any given shell command so both the tool with and without strace don't need to be run.
+We present an automated analysis tool for build systems based on
+\verb|make|, which can automatically determine the available
+parallelism in a build process and provide useful information to
+improve it. Our tool makes use of \verb|strace| instrumentation to
+determine the ground truth about the build process, and can answer
+counterfactual questions about how much a build could improve.
+%
+We show four case studies on three real software projects
+demonstrating the power of our analysis and point to sources of
+slowdown and lack of parallelism, and use our tool to make
+improvements that substantially increase parallelism.
 
-In addition to this, we hope to analyse more project builds and introduce parallelism at other
-level of project builds, such as at the level of the compiler.  
+The case studies we've shown already demonstrate the value of our
+tool, but extensions could make it more useful to developers and build
+system authors---for example, by automatically generating revised
+\verb|Makefile|s or by using \verb|strace| to instrument arbitrary
+build systems, not just \verb|make|. Finally, we hope to integrate
+this with an analysis of parallelism in commands executed by the build
+system, such as the \verb|gold| linker.
 
 \bibliographystyle{ACM-Reference-Format} 
 \bibliography{citations}
