@@ -274,27 +274,6 @@ suggest solutions to that problem.  Third, we will discuss when a build has ampl
 parallelism but doesn't achieve its maximum paralleism due to bad operating system scaling.
 Fourth, we will discuss the problem of a slow compiler.
 
-\subsection{Unnecessarily sequential}
-
-Makefiles are a collection of rules which describe how to build some targets.  Each rule consists
-of a a series of prerequisites and a series of recipes which are run to build the target.  The
-prerequisites can be built in parallel but the recipes are run in the order they are listed.  So,
-the author of a makefile can affect the potential parallelism of the build by how they write their
-makefile.
-
-A makefile which is too sequential will suffer from an excessively large span.
-% not sure what to say here
-
-To diagnose this problem using our tool, the user can calculate the span of the original build
-graph and then let the tool build a new graph using strace data and calculate the span of the
-new graph.  If the span of the new graph is less than the span of the original graph then the
-original graph was unnecessarily sequential.
-
-The way to fix a graph like this is for the makefile writer to re-write the makefile to
-remove the false-dependencies discovered by the tool.
-
-Example: todo
-
 \subsection{Expensive command}
 \label{sec:expensive}
 
@@ -364,6 +343,36 @@ previously built by make.  By declaring each object file as its own target and b
 individually then linking them, make was able to determine it wasn't necessary to build them the
 2nd time; so the effect time of the first cc command when from 40 seconds to 2 seconds; only the
 time necessary for linking the object files together.
+
+\subsection{Unnecessarily sequential}
+
+Makefiles are a collection of rules which describe how to build some targets.  Each rule consists
+of a a series of prerequisites and a series of recipes which are run to build the target.  The
+prerequisites can be built in parallel but the recipes are run in the order they are listed.  So,
+the author of a makefile can affect the potential parallelism of the build by how they write their
+makefile.
+
+A makefile which is too sequential will have a longer than necessary span.  In the previous
+section we talked about projects having a long span because it was dominated by a single
+long running shell command.  Another possiblility is the span being made up of many shell
+commands; none of which dominate.  In the previous section we talked about zstd, and if we
+rewrite the makefiles so the long running commands are made up of many sequential compilation
+and then linking commands we end up with a build that has the same work and span as the original.
+
+To diagnose this problem using our tool, the user can once again calculate the span of the build
+graph and look at what targets and shell calls constitute the span.  In this case the span is
+made up of many short running compilation jobs.  To check if these compilation jobs may run in
+parallel, our tool will take the original graph, the collected strace data, and build a new graph
+as described in section \ref{sec:revisegraphs}.  The span of the new graph can then be compared
+to the span of the old graph; if the span of the new graph is less than the span of the old graph,
+then the original graph was unnecessarily sequential.  The allow this build to run faster in the
+future, the developer can rewrite the makefile to reflect the organization of the build in
+the new graph.
+
+In the case of zstd, when built with strace; the calculated work for the original graph is 133
+seconds and the span is 45 seconds; which means a parallelism of 2.95.  When this graph is
+rebuilt using strace data and the span is recalculated, it is 8 seconds, which matches with the
+predictions and observations from section \ref{sec:expensive}.
 
 \subsection{Bad OS Scaling}
 
