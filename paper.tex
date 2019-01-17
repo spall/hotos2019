@@ -496,18 +496,34 @@ cc \$(FLAGS) \$(OBJ\_FILES) -shared
   \label{fig:llvm}
 \end{figure}
 
-Some projects may exhibit ample potential parallelism but may not achieve that potential
+Some projects may exhibit ample potential parallelism but not achieve that potential
 parallelism in practice.  LLVM~\citep{LLVM:CGO04} is the largest
-project we analysed, with a calculated work of approximately 12584 seconds, or 3.5 hours.
-With a predicted span of 305 seconds, or 5 minutes, LLVM has a parallelism of about 41.
-These calculations where made from a build of LLVM that was run without strace.
+project we analysed, with a calculated work of approximately 12584 seconds, or 3.5 hours, and
+a predicted span of 305 seconds, or 5 minutes, measured from a build of LLVM that was run without
+strace. With a work of 3.5 hours and a span of 5 minutes, LLVM has a parallelism of about 41.
 
 A parallelism of 41 lead us to believe that when built in parallel on a machine with 32 cores,
-LLVM should build in about 5 minutes.  Our observations did not match this expectation.  When LLVM was
-built with ``-j 32'' the observed speedup was slightly over 18; see chart~\ref{fig:llvm}.  Using work and
-span our tool can predict the potential speedup a build will experience using Brent's theorem
-\cite{brents}.  The lower speedup bound is predicted using Brent's theorem, which specifies that for
-P processors, \begin{math} T_P \leq T \end{math}
+LLVM would build in about 5 minutes.  Our observations however, did not match this expectation.
+In chart \ref{fig:llvm} we see two different observed speedups, indicted by the squares and
+triangles.  The squares indicate the observed speedup of LLVM when run on a machine with 32 cores,
+with \emph{make -j 1} to \emph{make -j 32}.  The triangles indicate the observed speedup when run
+on a different machine, with 32 real cores and 32 hyperthreads, with \emph{make -j n} from where
+n is most of the numbers between 1 and 32.  The dashed line indicates the upper predicted speedup,
+which is the speedup the project can't exceed.  It is apparent from the chart that LLVM fails to
+achieve this maximum predicted speedup.  The solid line represents the predicted lower speedup,
+which is the speedup the project should achieve at minimum.  And it appears in the chart that
+LLVM narrowly achieves this speedup, when built with \emph{make -j n} for most n.
+
+The lower and upper speedup bounds are calculated using Brent's theorem \cite{brents}, which
+specifies upper and lower bounds on the time, $T_P$ it will take a parallel algorithm to run on P
+processors.
+
+\begin{equation*}
+  \frac{work}{P} \geq T_P \leq \frac{work}{P} + span 
+\end{equation*}
+
+
+
 
 % say something about brent's theorem
 % say something about why llvm doesnt achieve the predicted speedup
