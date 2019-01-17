@@ -9,8 +9,14 @@
 % figures and tables should not require magnification, may contain color but should be
 % legible in black and white
 
-\documentclass[sigplan,10pt,review,authorversion]{acmart}\settopmatter{printfolios=true,printccs=false,printacmref=false}
-
+\documentclass[sigconf,10pt,review,authorversion]{acmart}\settopmatter{printfolios=true,printccs=false,printacmref=false}
+\usepackage{geometry}
+\geometry{reset, twoside=true, head=13pt,
+     paperwidth=8.5in, paperheight=11in,
+     includeheadfoot, columnsep=2pc,
+     top=57pt, bottom=73pt, inner=72pt, outer=72pt,
+     marginparwidth=2pc,heightrounded
+     }
 \citestyle{acmnumeric}
 
 % REMOVE FOR ACCEPTED
@@ -487,7 +493,7 @@ predictions and observations from section \ref{sec:expensive}.
 \end{figure}
 
 Some projects may exhibit ample potential parallelism but may not achieve that potential
-parallelism in practice.  LLVM \cite{llvm6.0.0} is the largest
+parallelism in practice.  LLVM~\citep{LLVM:CGO04} is the largest
 project we analysed, with a calculated work of approximately 12584 seconds, or 3.5 hours.
 With a predicted span of 305 seconds, or 5 minutes, LLVM has a parallelism of about 41.
 These calculations where made from a build of LLVM that was run without strace.
@@ -598,7 +604,8 @@ time of any given shell command so both the tool with and without strace don't n
 In addition to this, we hope to analyse more project builds and introduce parallelism at other
 level of project builds, such as at the level of the compiler.  
 
+\bibliographystyle{ACM-Reference-Format} 
 \bibliography{citations}
-\bibliographystyle{plain}
+\balance
 
 \end{document}
