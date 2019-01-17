@@ -521,9 +521,10 @@ LLVM narrowly achieves this speedup, when built with \emph{make -j n} for most n
 The lower and upper speedup bounds are calculated using Brent's theorem \cite{brents}, which
 specifies upper and lower bounds on the time, $T_P$ it will take a parallel algorithm to run on P
 processors.
-\begin{math}
+
+\begin{equation*}
   \frac{work}{P} \geq T_P \leq \frac{work}{P} + span 
-\end{math}
+\end{equation*}
 
 
 
