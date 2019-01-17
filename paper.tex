@@ -158,37 +158,37 @@ degrees of parallelism.
 
 \section{Analysis tool}
 \label{sec:analysis}
-In this section we describe the tools we use to analyse, diagnose problems, and suggest solutions
-for project builds that use make.  In section \ref{sec:makeanalysis} we will discuss how we use
-a modified version of GNU Make to record enough information about a project's build to later
-reconstruct the build graph during a post mortem analysis.  In section \ref{sec:straceinstr} we
-will discuss how we additionally use a slightly modified version of strace to record all of the
-system calls made during the build and then use this information to determine the real dependencies
-of the build by looking at which files were actually touched. In section \ref{sec:revisegraphs} we
-will look at how we combine the information from these two tools to transform build graphs into
-new graphs with potentially more parallelism and provide insight into the build graph's structure.
-% what else to say here?
+In this section we describe the tools we use to analyse make builds, diagnose problems related
+to parallelism, and identify places for improvement. In section \ref{sec:makeanalysis} we
+discuss the modified version of GNU Make \cite{} we use to record enough information about a
+project's build to reconstruct the build graph during a post-mortem analysis.
+In section \ref{sec:straceinstr} we discuss how we use a slightly modified version of strace to
+record all of the system calls made during the project's build and then use the system calls
+to determine the real dependencies of the build. In section \ref{sec:revisegraphs} we discuss
+how to combine the information from these two tools to transform a build graph into
+a new graph with potentially more parallelism.
 
 \subsection{Make analysis and instrumentation}
 \label{sec:makeanalysis}
 
-To collect the desired level of information from a run of GNU Make \cite{}, we run make with the
-debug level of 'verbose', use our own make wrappers which print additional information, and use
-a modified version of make which prints directory and timing information for each shell command
-it runs.  All of this information is written to a file and is used by our tool to reconstruct
-the build graph after the build successfully completes.  We are able to re-construct a graph which
-contains all of the shell commands executed to build the project as well as the time it took
-to execute each one.  With this timing information we can calculate the work and the span of the
-build.  The work is the total time to execute every shell command in the build graph.  The span is
-the longest time to execute any sequence of shell commands in the build graph which must be
-executed sequentially.  For example: the span of a make rule is the longest time to execute a
-dependency plus the sum of the times to execute each recipe.  And parallelism is defined to be
-span/work, therefore to increase the parallelism of a project and reduce the overall running time,
-the span must be decreased.
+To collect the desired level of information from a run of GNU Make \cite{}, we run it with the
+debug level of 'verbose', use our own wrappers, which print additional information, and use
+a modified version of make which prints directory and timing information for each shell command run.
+All of this information is written to a file and later used to reconstruct
+the build graph of a successful build.  The reconstructed graph contains all of the shell commands
+executed during the build as well as the time each one took to complete.  With the structure of the
+build and the timing information the work and span of the build can be calculated. Work is the total
+time to execute every shell command in the build graph, and span is the longest time to execute any
+sequence of shell commands which must execute sequentially.  For example, the span of a single
+make rule is, the longest time to execute a dependency plus the sum of the times to execute each
+recipe.  Parallelism is defined as \begin{math} \frac{span}{work} \end{math}, therefore to increase
+the parallelism of a project the span must be decreased; making span an important place to focus
+performance improvements.
 
-Identifying the span path in the build allows the user to target the most appropriate place
-for performance improvements.  In section \ref{} we will discuss some projects that were analysed
-using this tool and what we learned about their parallelism and how to improve it.
+Identifying the span path in a build identifies the most important places for performance
+improvements.  In section \ref{sec:realanalyses} we discuss four causes of parallelism
+performance issues in make based project builds, how to use this tool to identify the
+issue and use information about the span of the build to implement a solution.
 
 % Have a wrapper around gnu make; which prints information about which top-level make
 % is being invocated and prints out the directory; this wrapper also times the call to
@@ -215,20 +215,21 @@ using this tool and what we learned about their parallelism and how to improve i
 \subsection{Strace instrumentation}
 \label{sec:straceinstr}
 
-In order to extend the analysis we can perform on build graphs, we use strace \cite{} in
-conjunction with our enhanced version of GNU Make.  Strace lets us capture and record the system
-calls of every process launched during a make build so we can later map directly from shell
-commands launched by make to the system calls those shell commands ran.  Strace can write the
-system calls and signals from each pid to a different file with the pid as the file extension.
-One problem with this is that Linux may re-use pids during the course of a build, which by default
-causes strace to overwrite the existing file.  To solve this problem and maintain a 1-to-1
-mapping between strace data and processes launched by make, we modified strace to append a
-timestamp to each file extension along with the pid.
+To extend the analysis performable on build graphs, strace \cite{} is used in
+conjunction with our enhanced version of GNU Make.  Strace can capture and record the system
+calls of every process launched during a make build, allowing us to later map directly between
+a shell command launched by make and the system calls it ran.  Strace can write the system call
+information for each pid used to its own file.  This is a good way to map directly from a
+shell command to a set of system calls, except that Linux may reuse pids during the course of
+a build, which causes strace, by default, overwrite these files.  To solve this problem and
+maintain a 1 to 1 mapping between processes launched by make and system call information,
+we modified strace to append a timestamp to each file extension along with the pid.
 
-Once the correct system call data is mapped to the correct build command, the strace data is
-processed to determine which files were inputs and outputs of that command.  An input in this case
-is a file that could have been read but not written and an output is a file that could have been
-written.  Using this information we can modify the build graph and we will discuss this more
+When the system call data is mapped to a command, the data is processed to determine which
+files were inputs and which files were outputs of that command.  An input file could have been
+read by the command but not written, and an output file could have been written by the command.
+Whether or not a file is an input or output depends on which system calls refer to the file.
+Using this information the build graph can potentially be modified and we discuss this more
 in the next section.
 
 % strace lets us capture and record the system calls of every process launched during a make build
@@ -249,23 +250,29 @@ in the next section.
 \subsection{Revising graphs}
 \label{sec:revisegraphs}
 
-The build graph is made up of two types of vertices and two types of directed edges.  A node is
-either a leaf, which represents a file or a single shell command executed by make, or a non-leaf,
-which represents a single target.  An edge is either a dependency edge, which indicates that the
-vertice the edge goes to can run in parallel with other vertices reach by dependency edges from the
-same source vertice, or a recipe edge, which indicates that the vertice the edge points to may not
-run in parallel with other vertices reachable from the source vertice, and it must run in a
-specific order relative to the other vertices reachable from the source.
+A build graph is made up of two types of vertices and two types of directed edges.  A vertex is
+either a leaf, representing a file or a shell command executed by make, or a non-leaf,
+representing a target.  An edge is either a dependency edge, or a recipe edge.
+Dependency edges leaving the same vertex may run in parallel with one another, but must all
+complete before any recipes edges leaving the vertex may be run.  Recipe edges leaving the same
+vertex must run sequentially in a predetermined order after all dependency edges have been run.
 
-To increase the span of the build graph we would like to transform recipe edges into dependency
-edges if possible.  To determine if this is possible we use the collected system call data and
-calculate the file inputs and file outputs of each shell command.  If two adjacent shell commands
-which occur sequentially, share zero or more input files and share no input and output files, then
-those two commands can run in parallel.
+To increase the span of a build graph recipe edges need to transform into dependency
+edges if possible.  To determine if it is possible system call data is used to calculate the
+file inputs and file outputs of each shell command.  If two adjacent recipes share zero or more
+input files and share no input and output files, then those two commands can run in parallel.
 
-Our graph re-builder performs this analysis on the original build graph and produces a new build
-graph which hopefully has a lower span than the original graph.
-
+For each vertex in the original graph, the inputs and outputs are calculated for each
+dependency and recipe.  And an \emph{input-output} graph is built using this information.  If two
+recipes intersect in more than just their inputs, there is an edge from the recipe that executes
+first to the recipe that executes later.  Every recipe is compared to every other recipe and to
+the set of dependencies to build this \emph{input-output} graph.  The recipes that can be safely
+run in parallel are determined by calculating the lowest level of the graph each vertex is at.
+Recipes may run in parallel with other recipes or dependencies at the same level, but must run
+after all recipes and dependencies at lower levels have completed.  After the new graph is
+constructed the same analysis that was performed on the original graph can be performed on the
+new graph.  Whether or not the new graph has a lower span is dependent upon whether or not
+transformed edges fall within the original span path or not.
 
 % build graph is made up of two types of node and two types of edges.  A node is either a
 % leaf node which represents a file or represents a single shell command executed by make, and
@@ -282,45 +289,54 @@ graph which hopefully has a lower span than the original graph.
 % adjacent 
 
 \section{Make build analyses}
+\label{sec:realanalyses}
 
-In this section we will look at four problems with Make build systems.  First we will discuss
-what it means for a build to be unnecessarily sequential and how we can diagnose and suggestion
-solutions to that problem.  Second, we will discuss build systems being dominated by a single
-expensive command that prevents the build from running more quickly and how we can diagnose and
-suggest solutions to that problem.  Third, we will discuss when a build has ample available
-parallelism but doesn't achieve its maximum paralleism due to bad operating system scaling.
-Fourth, we will discuss the problem of a slow compiler.
+In this section we discuss four problems with project builds that use make.  In section \ref{sec:expensive},
+we discuss
+builds whose spans are dominated by a single expensive command that prevents the build from
+achieving greater parallelism, look at a project that exhibits this behavior, and explain our
+our tool can diagnose this problem and identify areas for improvement.  In section \ref{sec:sequential}
+, we discuss what
+it means for a build to be unnecessarily sequential, and look at an example of a build that
+exhibits this behavior, and how our tool can diagnose this problem and identify areas for improvement.
+In section \ref{sec:scalability}, we discuss when a build should have ample available parallelism
+but fails to achieve that
+parallelism in practice, look at a project that exhibits this behavior, and discuss potential causes.
+In section \ref{sec:compiler} we discuss another instance of an expensive command dominating a
+build's span; in this case a
+slow compiler, we look at a project that exhibits this behavior and how our tool can diagnose it
+and identify areas for improvement.
 
 \subsection{Expensive command}
 \label{sec:expensive}
 
 \begin{figure}[t]
   \includegraphics[width=0.5\textwidth]{zstd-speedup}
-  \caption{todo}
+  \caption{Speedup of zstd's original build when built with regular make,
+    compared to speedup of zstd's modified build described in section \ref{sec:expensive}
+  when built with regular make.}
   \label{fig:zstd}
 \end{figure}
 
-All build systems which lack the desired parallelism can be characterized as having too great of
+All project builds which lack the desired parallelism can be characterized as having too great of
 a span in relation to their work.  The span in a build system is the longest (in time) series of
 tasks that must be executed sequentially.  In some cases the span is not a series of similar length
-tasks but is dominated by a single long running task.  In cases like these it is best to point the
-user to the most expensive task in the span because reducing the running time of that task is the
-best way to increase the parallelism of the build.
+tasks, but is dominated by a single long running task.  In cases like these it is best to identify
+the most expensive task in the span, because reducing the running time of that task is the
+most likely way to make progress towards increasing the parallelism of the build.
 
-Reducing the running time of non-span tasks will not decrease the running time of the project as
-a whole.
+To diagnose the problem of a span dominated by a single long running task, our tool can be used
+to learn the span path through the build graph and learn which target and shell commands
+are the most time intensive.  To see what sort of an improvement would occur in the span if the
+running time of the most expensive target in the span was to decrease, the tool will recalculate
+the span of the graph excluding its most expensive member any number of times.  This is useful
+in the case where decreasing the running time of a single task gives the build graph a new span
+path with a similarly long running time, which is dominated by a different long running command.
 
-To diagnose this problem the user can use the tool to discover the span path through the build
-graph and see which target and shell commands are the most time intensive.  The user can then see
-what sort of improvement would occur to the span if they were able to decrease the running
-time of any target in the graph.  This is useful in the case where decreasing the running time
-of a single task gives the build graph a new span path which is dominated by a different also
-long running command that prevents the span of the graph from decreasing.
+Facebook's zstd project \cite{} has a build that exhibits this property.  When we used our tool to analyse
+the span of zstd's build we saw that it is dominated by a single call to cc; see figure \ref{code:cc1}.
 
-An example of a project with such a build is Facebook's zstd project \cite{}.  If we use our tool
-to analyse the span of zstd's build, we see that the original span is dominated by a single call
-to cc.
-
+\begin{figure}[H]
 \begin{Verbatim}[commandchars=\\\{\},codes={\catcode`$=3\catcode`^=7\catcode`_=8},fontsize=\small,numbers=left,xleftmargin=5mm]
   cc \$(FLAGS)
   ../lib/common/debug.c
@@ -329,10 +345,13 @@ to cc.
   zstdcli.o fileio.o bench.o
   datagen.o dibio.o -o zstd
 \end{Verbatim}
+\caption{A long running cc command which was responsible for ??\% of zstd's span.  It compiled and linked 25 .c files.}
+\label{code:cc1}
+\end{figure}
 
-If this call is no longer part of the span, we find that the new span is similarly dominated by
-another single call to cc.
-
+If this call is no longer part of the span, the new span is similarly dominated by another single call to cc;
+see figure \ref{code:cc2}.
+\begin{figure}[H]
 \begin{Verbatim}[commandchars=\\\{\},codes={\catcode`$=3\catcode`^=7\catcode`_=8},fontsize=\small,numbers=left,xleftmargin=5mm]
   cc \$(FLAGS)
   common/debug.c
@@ -341,27 +360,63 @@ another single call to cc.
   -shared -fPIC -fvisibility=hidden
   -Wl,-soname=libzstd.so.1 -o libzstd.so.1.3.7
 \end{Verbatim}
+\caption{A long running cc command which was responsible for ??\% of zstd's span when \ref{code:cc1} was not a membe rof the span.
+This command compiled and linked 30 files.}
+\label{code:cc2}
+\end{figure}
 
-If neither of these calls were members of the build's span, then our tool predicts the span would be
-7.2 seconds rather than 39 seconds or 37 seconds.  To test this we manually replaced the first of
-these two cc calls with 28 new calls to cc; 27 of those are spent compiling each .c file individually
-and the last is to link them all together.  Due to this new organization the 27 .c files can be
-compiled in parallel.  Similarly, the second cc call is replace with 28 new calls to cc; 27 of which
-compile each .c file individually and the last of which links the object files together.
+If neither of these calls are members of the build's span, then our tool predicts the span would be
+approximately 7.2 seconds rather than 39 seconds, as with the original span, or 37 seconds, as with the second span.
+This is about an 80\% reduction in the build's span, and the parallelism improves from 2.95 to ??.
 
-You can see in figure \ref{fig:zstd} that when we ran the modified build with 1 to 32 jobs we
-observed the predicted speedup.  An additional performance improvement that we did not predict was
-that the work of the new build would decrease from approximately 120 seconds to approximately 80 seconds.
+To test this we manually replaced the cc command in figure \ref{code:cc1} with the code in figure
+\ref{code:cc3}.  The original command is replace by a new target for each object file and target
+that can build each object file in parallel and link them together afterwards.
 
-Each of the generated object files is declared as its own target; so when make considers building
-each object file it can check if the file already exists and whether it must be rebuilt.  It turns
-out that the object files being built as part of the first long cc command, had already been
-previously built by make.  By declaring each object file as its own target and building each one
-individually then linking them, make was able to determine it wasn't necessary to build them the
-2nd time; so the effect time of the first cc command when from 40 seconds to 2 seconds; only the
-time necessary for linking the object files together.
+\begin{figure}[H]
+\begin{Verbatim}[commandchars=\\\{\},codes={\catcode`$=3\catcode`^=7\catcode`_=8},fontsize=\small,numbers=left,xleftmargin=5mm]
+../lib/common/debug.o: ../lib/common/debug.c                                                         
+    cc \$(FLAGS) ../lib/common/debug.c
+
+\textrm{\emph{26 more targets; one for each object file}}
+
+zstd-build: \$(OBJ\_FILES)
+    cc \$(FLAGS) \$(OBJ\_FILES) -o zstd
+\end{Verbatim}
+\caption{Makefile targets which replaced original code in fig. \ref{code:cc1}}
+\label{code:cc3}
+\end{figure}
+
+Similarly, the code in figure \ref{code:cc2} is replaced by the code in figure \ref{code:cc4}.  Once
+again each object file is explicitly declared as its own target and a target is declared that can
+build these object files in parallel and then link them together afterwards.
+
+\begin{figure}[H]
+  \begin{Verbatim}[commandchars=\\\{\},codes={\catcode`$=3\catcode`^=7\catcode`_=8},fontsize=\small,numbers=left,xleftmargin=5mm]
+common/debug.o1: common/debug.c
+    cc \$(FLAGS) common/debug.c -o common/debug.o1
+
+\textrm{\emph{29 more targets; one for each object file}}
+
+libzstd-build: \$(OBJ\_FILES)
+    cc \$(FLAGS) \$(OBJ\_FILES) -shared
+       -Wl,-soname=libzstd.so.1 -o libzstd.so.1.3.7
+\end{Verbatim}
+\caption{Makefile targets which replaced original code in fig. \ref{code:cc2}}
+\label{code:cc4}
+\end{figure}
+
+Figure \ref{fig:zstd} shows that when the modified build was run with 1 to 32 jobs,
+the predicted speedup was observed.  An additional performance improvement that was not predicted
+is that the work of the new build decreased from approximately 120 seconds to approximately 80 seconds.
+This is because each of the object files is declared as its own target, so make can consider whether
+or not the file already exists and if it is necessary to rebuild it.  In this case, it turns out that
+the object files being built as part of the cc command in fig. \ref{code:cc1} had already been built
+by make; making it unnecessary to build them again.  This cuts the effect time of the code in fig.
+\ref{code:cc1} from about 40 seconds to about 2 seconds; just the time to link the object files.
 
 \subsection{Unnecessarily sequential}
+\label{sec:sequential}
 
 Makefiles are a collection of rules which describe how to build some targets.  Each rule consists
 of a a series of prerequisites and a series of recipes which are run to build the target.  The
@@ -391,22 +446,24 @@ seconds and the span is 45 seconds; which means a parallelism of 2.95.  When thi
 rebuilt using strace data and the span is recalculated, it is 8 seconds, which matches with the
 predictions and observations from section \ref{sec:expensive}.
 
-\subsection{Bad OS Scaling}
+\subsection{Bad scalability}
+\label{sec:scalability}
 
-\begin{figure}[]
+\begin{figure}[t]
   \includegraphics[width=0.5\textwidth]{llvm-speedup}
-  \caption{todo}
+  \caption{A comparison of the observed speedup when LLVM was built with \emph{make -j <n> for <n> from 1 to 32},
+    to the potential speedups our tool predicted using the work and span calculations}
   \label{fig:llvm}
 \end{figure}
 
-Some projects may exhibit ample potential parallelism, but even when run with more threads than
-available parallelism, predicted parallelism may not be achieved.  LLVM \cite{} is the largest
-project we analysed with a calculated work of approximately 12584 seconds, or 3.5 hours.  The
-predicted span of LLVM is 305 seconds, or 5 minutes.  This gives LLVM a parallelism of about 41.
-These calculations where made from a build of LLVM that was done not using strace.
+Some projects may exhibit ample potential parallelism but may not achieve that potential
+parallelism in practice.  LLVM \cite{} is the largest
+project we analysed, with a calculated work of approximately 12584 seconds, or 3.5 hours.
+With a predicted span of 305 seconds, or 5 minutes, LLVM has a parallelism of about 41.
+These calculations where made from a build of LLVM that was run without strace.
 
-A parallelism of 41 would lead one to believe that on a machine with 32 cores LLVM should be built
-in parallel in about 5 minutes.  Our observations did not match this expectation.  When LLVM was
+A parallelism of 41 lead us to believe that when built in parallel on a machine with 32 cores,
+LLVM should build in about 5 minutes.  Our observations did not match this expectation.  When LLVM was
 built with ``-j 32'' the observed speedup was slightly over 18; see chart \ref{}.  Using work and
 span our tool can predict the potential speedup a build will experience using Brent's theorem
 \cite{}.  The lower speedup bound is predicted using Brent's theorem, which specifies that for
@@ -419,46 +476,62 @@ P processors, \begin{math} T_P \leq T \end{math}
 % say something about how LLVM is a very large project and 
 
 \subsection{Slow compiler}
+\label{sec:compiler}
 
-A similar issue to the one described in section \ref{sec:expensive} is when a build's
-span is dominated by the compilation of a single file.  This problem however cannot be
-solved in the makefile like the zstd issue was.  Solutions to this problem include
+An issue similar to the one described in section \ref{sec:expensive} is a build's
+span being dominated by the compilation of a single file.  This problem cannot be
+solved in the makefile like the issue in section \ref{sec:expensive} was.
+Possible solutions to this problem include
 breaking the file up into smaller files which can be compiled in parallel and then
-linked; or changing the compiler so that it is capable of compiling the file faster.
-A faster compiler, would have the additional benefit of not only decreasing the span
+linked, or changing the compiler so it is capable of compiling the file faster.
+A faster compiler would likely have the additional benefit of not only decreasing the span
 of the project but also likely decreasing the work of the project.
 
 Google's protocol buffers project \cite{} exhibited this behavior.  It had a relatively
-long predicted span of ?? seconds, which was dominated by a call to g++ which was
-compiling a single file.  When we apply the same analysis as we applied to zstd in
-section \ref{sec:expensive}, we see that if \ref{} wasn't a part of the span, the new
-span would be ?? and would be dominated by another g++ compilation of a single file.
-And we continue this again to find that the 3 top span paths are dominated by g++
-compilations of individual files.  If none of these calls were part of the span, the
-new span of the project would be ??.  Now if the developers of protocol buffers were
-interested in increasing the parallelism of their project they would know where they
-should focus their efforts
+long predicted span of ?? seconds, which was dominated by a call to g++ which compiles
+a single file.  When the analysis applied in section \ref{sec:expensive} is applied to
+protocol buffers' build, we learn that if the code in fig. \ref{code:g++1} wasn't part of the span,
+the new span would be ?? and would be dominated by the code in fig. \ref{code:g++2}.  And when that
+code isn't part of the span, we learn that the new span is again dominated by another
+g++ call in the code in fig. \ref{g++3}.  If none of these g++ compilations are in the span,
+the new span of the project is roughly half the original span.
 
-Here is a simplification of the real command run by make; it took about 40 seconds to run.
+If the developers of protocol buffers were interested in increasing the parallelism of
+their project they would know they should begin their efforts by speeding up the
+compilation of these 3 files.
+
+\begin{figure}[H]
 \begin{Verbatim}[commandchars=\\\{\},codes={\catcode`$=3\catcode`^=7\catcode`_=8},fontsize=\small,numbers=left,xleftmargin=5mm]
   g++ \$(FLAGS)
   -o google/protobuf/descriptor.lo
   google/protobuf/descriptor.cc
 \end{Verbatim}
+\caption{A simplification of the real command run by make; compiles a single file and took about
+40 seconds to run.}
+\label{code:g++1}
+\end{figure}
 
-Here is a simplification of the real command run by make; it took about 27 seconds to run.
+\begin{figure}[H]
 \begin{Verbatim}[commandchars=\\\{\},codes={\catcode`$=3\catcode`^=7\catcode`_=8},fontsize=\small,numbers=left,xleftmargin=5mm]
   g++ \$(FLAGS)
   -o google/protobuf/descriptor.pb.lo
   google/protobuf/descriptor.pb.cc
 \end{Verbatim}
+\caption{A simplification of the real command run by make; compiles a single file and took about
+27 seconds to run.}
+\label{code:g++2}
+\end{figure}
 
-Here is a simplification of the real command run by make; it took about 22.5 seconds to run.
+\begin{figure}[H]
 \begin{Verbatim}[commandchars=\\\{\},codes={\catcode`$=3\catcode`^=7\catcode`_=8},fontsize=\small,numbers=left,xleftmargin=5mm]
   g++ \$(FLAGS)
   -o google/protobuf/compiler/cpp/cpp\_message.lo
   google/protobuf/compiler/cpp/cpp\_message.cc
 \end{Verbatim}
+\caption{A simplification of the real command run by make; compiles a single file and took about
+22.5 seconds to run.}
+\label{code:g++3}
+\end{figure}
 
 % so, if the problem is with compiling a single file, then we don't really have a
 % make level solution to that problem
@@ -481,13 +554,14 @@ Here is a simplification of the real command run by make; it took about 22.5 sec
 
 \section{Future work}
 
-One of the limitations of this work is that currenlty to collect the necessary data to rebuild
+One of the limitations of this work is that currenlty to collect the necessary data to reconstruct
 the build graph, the project must be built using a single thread.  This is a burden for projects
-that are very long running such as LLVM.  Additionally, building with strace causes an additional
+that are very long running, such as LLVM.  Additionally, building with strace causes an additional
 slowdown and inflates the running time of each shell command, which makes the raw numbers
 reported by a build graph created with strace on, inaccurate.  In the future for performance sake
 it would be good to collect the necessary information while allowing make to run in parallel with
-any number of processes.
+any number of processes.  It would also be good to know how much strace perturbs the recorded
+time of any given shell command so both the tool with and without strace don't need to be run.
 
 In addition to this, we hope to analyse more project builds and introduce parallelism at other
 level of project builds, such as at the level of the compiler.  
