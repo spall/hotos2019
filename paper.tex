@@ -325,21 +325,22 @@ transformed edges fall within the original span path or not.
 \section{Make build analyses}
 \label{sec:realanalyses}
 
-In this section we discuss four problems with project builds that use make.  In section \ref{sec:expensive},
-we discuss
-builds whose spans are dominated by a single expensive command that prevents the build from
-achieving greater parallelism, look at a project that exhibits this behavior, and explain our
-our tool can diagnose this problem and identify areas for improvement.  In section \ref{sec:sequential}
-, we discuss what
-it means for a build to be unnecessarily sequential, and look at an example of a build that
-exhibits this behavior, and how our tool can diagnose this problem and identify areas for improvement.
-In section \ref{sec:scalability}, we discuss when a build should have ample available parallelism
-but fails to achieve that
-parallelism in practice, look at a project that exhibits this behavior, and discuss potential causes.
-In section \ref{sec:compiler} we discuss another instance of an expensive command dominating a
-build's span; in this case a
-slow compiler, we look at a project that exhibits this behavior and how our tool can diagnose it
-and identify areas for improvement.
+In this section we discuss four problems with project builds that use
+make.  In section \ref{sec:expensive}, we discuss builds whose spans
+are dominated by a single expensive command that prevents the build
+from achieving greater parallelism, look at a project that exhibits
+this behavior, and explain our our tool can diagnose this problem and
+identify areas for improvement.  In section \ref{sec:sequential} , we
+discuss what it means for a build to be unnecessarily sequential, and
+look at an example of a build that exhibits this behavior, and how our
+tool can diagnose this problem and identify areas for improvement.  In
+section \ref{sec:scalability}, we discuss when a build should have
+ample available parallelism but fails to achieve that parallelism in
+practice, look at a project that exhibits this behavior, and discuss
+potential causes.  In section \ref{sec:compiler} we discuss another
+instance of an expensive command dominating a build's span; in this
+case a slow compiler, we look at a project that exhibits this behavior
+and how our tool can automatically diagnose it and identify areas for improvement.
 
 \subsection{Too large command}
 \label{sec:expensive}
@@ -352,23 +353,31 @@ and identify areas for improvement.
   \label{fig:zstd}
 \end{figure}
 
-All project builds which lack the desired parallelism can be characterized as having too great of
-a span in relation to their work.  The span in a build system is the longest (in time) series of
-tasks that must be executed sequentially.  In some cases the span is not a series of similar length
-tasks, but is dominated by a single long running task.  In cases like these it is best to identify
-the most expensive task in the span, because reducing the running time of that task is the
-most likely way to make progress towards increasing the parallelism of the build.
+All project builds which lack the desired parallelism can be
+characterized as having too great of a span in relation to their work.
+The span in a build system is the longest (in time) series of tasks
+that must be executed sequentially.  In some cases the span is not a
+series of similar length tasks, but is dominated by a single long
+running task.  In cases like these it is best to identify the most
+expensive task in the span, because reducing the running time of that
+task is the most likely way to make progress towards increasing the
+parallelism of the build.
 
-To diagnose the problem of a span dominated by a single long running task, our tool can be used
-to learn the span path through the build graph and learn which target and shell commands
-are the most time intensive.  To see what sort of an improvement would occur in the span if the
-running time of the most expensive target in the span was to decrease, the tool will recalculate
-the span of the graph excluding its most expensive member any number of times.  This is useful
-in the case where decreasing the running time of a single task gives the build graph a new span
-path with a similarly long running time, which is dominated by a different long running command.
+To diagnose the problem of a span dominated by a single long running
+task, our tool can be used to learn the span path through the build
+graph and learn which target and shell commands are the most time
+intensive.  To see what sort of an improvement would occur in the span
+if the running time of the most expensive target in the span was to
+decrease, the tool will recalculate the span of the graph excluding
+its most expensive member any number of times.  This is useful in the
+case where decreasing the running time of a single task gives the
+build graph a new span path with a similarly long running time, but
+ dominated by a \emph{different} long running command.
 
-Facebook's zstd project \cite{zstd1.3.7} has a build that exhibits this property.  When we used our tool to analyze
-the span of zstd's build we saw that it is dominated by a single call to cc; see fig. \ref{code:cc1}.
+Facebook's zstd project~\cite{zstd1.3.7} has a build that exhibits
+this property.  When we used our tool to analyze the span of zstd's
+build we saw that it is dominated by a single call to \verb|cc|; see
+fig.~\ref{code:cc1}.
 
 \begin{figure}[H]
 \begin{Verbatim}[commandchars=\\\{\},codes={\catcode`$=3\catcode`^=7\catcode`_=8},fontsize=\small]
@@ -376,28 +385,32 @@ the span of zstd's build we saw that it is dominated by a single call to cc; see
     zstdcli.o fileio.o bench.o datagen.o dibio.o
     -o zstd
 \end{Verbatim}
-\caption{A long running cc command which was responsible for about 97\% of zstd's span.  It compiled and linked 27 .c files.}
+\caption{This is responsible for about 97\% of zstd's span.  It compiles and links 27 .c files.}
 \label{code:cc1}
 \end{figure}
 
-If this call is no longer part of the span, the new span is similarly dominated by another single call to cc;
-see fig. \ref{code:cc2}.
+If this command is removed from the build, the new span is similarly dominated by another single call to \verb|cc|; see fig. \ref{code:cc2}.
 \begin{figure}[H]
 \begin{Verbatim}[commandchars=\\\{\},codes={\catcode`$=3\catcode`^=7\catcode`_=8},fontsize=\small]
   cc \$(FLAGS) common/debug.c \textrm{\emph{29 more .c files}}
     -o libzstd.so.1.3.7
 \end{Verbatim}
-\caption{A long running cc command which was responsible for approximately 100\% of zstd's span when the command in fig. \ref{code:cc1} is removed.
-This command compiled and linked 30 files.}
+\caption{A long running cc command responsible for approximately 100\%
+  of zstd's span when the command in fig. \ref{code:cc1} is removed.
+  This command compiles and links 30 files.}
 \label{code:cc2}
 \end{figure}
-If neither of these calls are members of the build's span, then our tool predicts the span would be
-approximately 7.2 seconds rather than 39 seconds, as with the original span, or 37 seconds, as with the second span.
-This is about an 80\% reduction in the build's span, and the parallelism improves from 2.98 to 16.
+If neither of these calls are members of the build's span, then our
+tool predicts the span would be approximately 7.2 seconds rather than
+39 seconds, as with the original span, or 37 seconds, as with the
+second span.  This is an 80\% reduction in the build's span, and
+the parallelism improves from 2.98 to 16.
 
-To test this we manually replaced the cc command in fig. \ref{code:cc1} with the code in fig.
-\ref{code:cc3}.  The original command is replace by a new target for each object file and target
-that can build each object file in parallel and link them together afterwards.
+To test this we manually replaced the cc command in
+fig. \ref{code:cc1} with the code in fig.  \ref{code:cc3}.  The
+original command is replaced by a new target for each object file and
+target that can build each object file in parallel and link them
+together afterwards.
 
 \begin{figure}[H]
 \begin{Verbatim}[commandchars=\\\{\},codes={\catcode`$=3\catcode`^=7\catcode`_=8},fontsize=\small]
@@ -411,9 +424,10 @@ zstd-build: \$(OBJ\_FILES)
 \label{code:cc3}
 \end{figure}
 
-Similarly, the code in fig. \ref{code:cc2} is replaced by the code in fig. \ref{code:cc4}.  Once
-again each object file is explicitly declared as its own target and a target is declared that can
-build these object files in parallel and then link them together afterwards.
+Similarly, the code in fig. \ref{code:cc2} is replaced by the code in
+fig. \ref{code:cc4}.  Once again each object file is explicitly
+declared as its own target and a target is declared that can build
+these object files in parallel and then link them together afterwards.
 
 \begin{figure}[H]
   \begin{Verbatim}[commandchars=\\\{\},codes={\catcode`$=3\catcode`^=7\catcode`_=8},fontsize=\small]
@@ -429,16 +443,20 @@ libzstd-build: \$(OBJ\_FILES)
 \label{code:cc4}
 \end{figure}
 
-Figure \ref{fig:zstd} shows that when the modified build was run with 1 to 32 jobs,
-the predicted speedup was observed.  An additional performance improvement that was not predicted
-is that the work of the new build decreased from approximately 120 seconds to approximately 80 seconds.
-This is because each of the object files is declared as its own target, so make can consider whether
-or not the file already exists and if it is necessary to rebuild it.  In this case, it turns out that
-the object files being built as part of the cc command in fig. \ref{code:cc1} had already been built
-by make; making it unnecessary to build them again.  This cuts the effect time of the code in fig.
-\ref{code:cc1} from about 40 seconds to about 2 seconds; just the time to link the object files.
+Figure \ref{fig:zstd} shows that when the modified build was run with
+1 to 32 jobs, the predicted speedup was observed.  An additional
+performance improvement that was not predicted is that the work of the
+new build decreased from approximately 120 seconds to approximately 80
+seconds.  This is because each of the object files is declared as its
+own target, so \verb|make| can consider whether or not the file
+already exists and if it is necessary to rebuild it.  In this case, it
+turns out that the object files being built as part of the cc command
+in fig. \ref{code:cc1} had already been built; making it unnecessary
+to build them again.  This cuts the effective time of the code in fig.
+\ref{code:cc1} from 40 seconds to 2 seconds---just the time to link
+the object files.
 
-\subsection{Unnecessarily sequential}
+\subsection{Unnecessarily sequential rules}
 \label{sec:sequential}
 
 Makefiles are a collection of rules which describe how to build targets,
