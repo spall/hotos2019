@@ -374,8 +374,7 @@ the span of zstd's build we saw that it is dominated by a single call to cc; see
 \begin{Verbatim}[commandchars=\\\{\},codes={\catcode`$=3\catcode`^=7\catcode`_=8},fontsize=\small,numbers=left,xleftmargin=5mm]
   cc \$(FLAGS)
   ../lib/common/debug.c
-  ../lib/common/entropy\_common.c
-  \textrm{\emph{25 more .c files}}
+  \textrm{\emph{26 more .c files}}
   zstdcli.o fileio.o bench.o
   datagen.o dibio.o -o zstd
 \end{Verbatim}
@@ -389,8 +388,7 @@ see fig. \ref{code:cc2}.
 \begin{Verbatim}[commandchars=\\\{\},codes={\catcode`$=3\catcode`^=7\catcode`_=8},fontsize=\small,numbers=left,xleftmargin=5mm]
   cc \$(FLAGS)
   common/debug.c
-  common/entropy\_common.c
-  \textrm{\emph{28 more .c files}}
+  \textrm{\emph{29 more .c files}}
   -Wl,-soname=libzstd.so.1 -o libzstd.so.1.3.7
 \end{Verbatim}
 \caption{A long running cc command which was responsible for aproximately 100\% of zstd's span when \ref{code:cc1} was not a membe rof the span.
@@ -410,9 +408,7 @@ that can build each object file in parallel and link them together afterwards.
 \begin{Verbatim}[commandchars=\\\{\},codes={\catcode`$=3\catcode`^=7\catcode`_=8},fontsize=\small,numbers=left,xleftmargin=5mm]
 ../lib/common/debug.o: ../lib/common/debug.c                                                       
     cc \$(FLAGS) ../lib/common/debug.c
-
-\textrm{\emph{26 more targets; one for each object file}}
-
+\textrm{\emph{26 more targets; one for each object file}}    
 zstd-build: \$(OBJ\_FILES)
     cc \$(FLAGS) \$(OBJ\_FILES) -o zstd
 \end{Verbatim}
@@ -427,13 +423,12 @@ build these object files in parallel and then link them together afterwards.
 \begin{figure}[H]
   \begin{Verbatim}[commandchars=\\\{\},codes={\catcode`$=3\catcode`^=7\catcode`_=8},fontsize=\small,numbers=left,xleftmargin=5mm]
 common/debug.o1: common/debug.c
-    cc \$(FLAGS) common/debug.c -o common/debug.o1
-
+    cc \$(FLAGS) common/debug.c
+       -o common/debug.o1
 \textrm{\emph{29 more targets; one for each object file}}
-
 libzstd-build: \$(OBJ\_FILES)
     cc \$(FLAGS) \$(OBJ\_FILES) -shared
-       -Wl,-soname=libzstd.so.1 -o libzstd.so.1.3.7
+       -o libzstd.so.1.3.7
 \end{Verbatim}
 \caption{Makefile targets which replaced original code in fig. \ref{code:cc2}}
 \label{code:cc4}
@@ -469,9 +464,7 @@ build performance.
   \begin{Verbatim}[commandchars=\\\{\},codes={\catcode`$=3\catcode`^=7\catcode`_=8},fontsize=\small,numbers=left,xleftmargin=5mm]
 cc \$(FLAGS) ../lib/common/debug.c
    -o ../lib/common/debug.o
-cc \$(FLAGS) ../lib/common/entropy\_common.c
-   -o ../lib/common/entropy\_common.o
-\textrm{\emph{25 more recipes; one for each .c file that needs to be compiled}}
+\textrm{\emph{26 more recipes; one for each .c file that needs to be compiled}}
 cc \$(FLAGS) \$(OBJ\_FILES) -o zstd
 \end{Verbatim}
   \caption{An alternative to the code in fig. \ref{code:cc1}. Each file is compiled individually
@@ -483,11 +476,9 @@ cc \$(FLAGS) \$(OBJ\_FILES) -o zstd
 \begin{figure}[H]
   \begin{Verbatim}[commandchars=\\\{\},codes={\catcode`$=3\catcode`^=7\catcode`_=8},fontsize=\small,numbers=left,xleftmargin=5mm]
 cc \$(FLAGS) common/debug.c -o common/debug.o1
-cc \$(FLAGS) common/entropy\_common.c
-   -o common/\_common.o1
-\textrm{\emph{28 more recipes; one for each .c file that needs to be compiled}}
+\textrm{\emph{29 more recipes; one for each .c file that needs to be compiled}}
 cc \$(FLAGS) \$(OBJ\_FILES) -shared
-   -Wl,-soname=libzstd.so.1 -o libzstd.so.1.3.7
+   -o libzstd.so.1.3.7
 \end{Verbatim}
   \caption{An alternative to the code in fig. \ref{code:cc2}. Each file is compiled individually
     as its own recipe, followed by a recipe to link the object files together.  This has the same
@@ -554,49 +545,21 @@ of the project but also likely decreasing the work of the project.
 Google's protocol buffers project \cite{protobufs3.6.1} exhibited this behavior.  It's work was calculated
 to be about 16.7 minutes and it had a relatively
 long predicted span of 43.7 seconds, which was dominated by a call to g++ compiling
-a single file.  When the analysis applied in section \ref{sec:expensive} is applied to
-protocol buffers' build, we learn that if the code in fig. \ref{code:g++1} wasn't part of the span,
-the new span would be about 31s and would be dominated by the code in fig. \ref{code:g++2}.
-And when that
-code isn't part of the span, we learn that the new span is again dominated by another
-g++ call in the code in fig. \ref{g++3}.  If none of these g++ compilations are in the span,
-the new span of the project is about 20s, roughtly half of the original span.
-
-If the developers of protocol buffers were interested in increasing the parallelism of
-their project they would know they should begin their efforts by speeding up the
-compilation of these 3 files.
+a single file.  When the analysis applied in section \ref{sec:expensive} is applied
+to protocol buffers' build, we learn that the top three spans are dominated by the
+single file compilations of the files in fig. \ref{code:g++1}.  If the g++ compilations
+of these three files were not in the build's span the new span would be about 20s,
+roughly half of the original span.  Speeding up the compilation of these three files
+would be a good place to begin improving the parallelism of this build.
 
 \begin{figure}[H]
 \begin{Verbatim}[commandchars=\\\{\},codes={\catcode`$=3\catcode`^=7\catcode`_=8},fontsize=\small,numbers=left,xleftmargin=5mm]
-  g++ \$(FLAGS)
-  -o google/protobuf/descriptor.lo
   google/protobuf/descriptor.cc
-\end{Verbatim}
-\caption{A simplification of the real command run by make; compiles a single file and took about
-40 seconds to run and was 90\% of the span.}
-\label{code:g++1}
-\end{figure}
-
-\begin{figure}[H]
-\begin{Verbatim}[commandchars=\\\{\},codes={\catcode`$=3\catcode`^=7\catcode`_=8},fontsize=\small,numbers=left,xleftmargin=5mm]
-  g++ \$(FLAGS)
-  -o google/protobuf/descriptor.pb.lo
   google/protobuf/descriptor.pb.cc
-\end{Verbatim}
-\caption{A simplification of the real command run by make; compiles a single file and took about
-27 seconds to run and was about 87\% of the span.}
-\label{code:g++2}
-\end{figure}
-
-\begin{figure}[H]
-\begin{Verbatim}[commandchars=\\\{\},codes={\catcode`$=3\catcode`^=7\catcode`_=8},fontsize=\small,numbers=left,xleftmargin=5mm]
-  g++ \$(FLAGS)
-  -o google/protobuf/compiler/cpp/cpp\_message.lo
   google/protobuf/compiler/cpp/cpp\_message.cc
 \end{Verbatim}
-\caption{A simplification of the real command run by make; compiles a single file and took about
-22.5 seconds to run and was about 90\% of the span.}
-\label{code:g++3}
+\caption{The compilation of these 3 files dominate the longest 3 spans.}
+\label{code:g++1}
 \end{figure}
 
 % so, if the problem is with compiling a single file, then we don't really have a
