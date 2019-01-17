@@ -457,7 +457,7 @@ predictions and observations from section \ref{sec:expensive}.
 \end{figure}
 
 Some projects may exhibit ample potential parallelism but may not achieve that potential
-parallelism in practice.  LLVM \cite{} is the largest
+parallelism in practice.  LLVM~\citep{LLVM:CGO04} is the largest
 project we analysed, with a calculated work of approximately 12584 seconds, or 3.5 hours.
 With a predicted span of 305 seconds, or 5 minutes, LLVM has a parallelism of about 41.
 These calculations where made from a build of LLVM that was run without strace.
@@ -565,5 +565,9 @@ time of any given shell command so both the tool with and without strace don't n
 
 In addition to this, we hope to analyse more project builds and introduce parallelism at other
 level of project builds, such as at the level of the compiler.  
+
+\bibliographystyle{ACM-Reference-Format} 
+\bibliography{citations}
+\balance
 
 \end{document}

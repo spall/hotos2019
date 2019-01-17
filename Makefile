@@ -1,3 +1,2 @@
 all:
-	xelatex paper
-	xelatex paper
+	latexmk -xelatex paper
