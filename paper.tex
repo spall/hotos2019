@@ -395,7 +395,6 @@ see fig. \ref{code:cc2}.
 This command compiled and linked 30 files.}
 \label{code:cc2}
 \end{figure}
-
 If neither of these calls are members of the build's span, then our tool predicts the span would be
 approximately 7.2 seconds rather than 39 seconds, as with the original span, or 37 seconds, as with the second span.
 This is about an 80\% reduction in the build's span, and the parallelism improves from 2.98 to 16.
@@ -446,60 +445,50 @@ by make; making it unnecessary to build them again.  This cuts the effect time o
 \subsection{Unnecessarily sequential}
 \label{sec:sequential}
 
-Makefiles are a collection of rules which describe how to build targets \cite{gnumakemanual}.
-Each rule consists
+Makefiles are a collection of rules which describe how to build targets \cite{gnumakemanual},
+and each rule consists
 of a a series of prerequisites and a series of recipes which are run to build the target.  The
 prerequisites can be built in parallel, but the recipes must be run in the order they are listed.  So,
 the author of a makefile can directly impact the potential parallelism of the build by
-how they organize their makefile.
+how they organize their makefile.  It is possible to unnecessarily list things as recipes that
+could have run in parallel.  Here we will look at an example of this and how our tool can
+discover that these recipes don't actually need to run in parallel.
 
 In the previous section we discussed zstd's build, which turned out to be unnecessarily sequential
 because two single shell calls which compiled and linked many files at once could be broken up
 into many parallel compilation jobs which could then be linked after.  These two commands could
 have been written as follows in fig. \ref{code:cc5} and fig. \ref{code:cc6} respectively, instead of as they were
 originally in fig. \ref{code:cc1} and fig. \ref{code:cc2} and would have resulted in the same
-build performance.
+build performance, but would make it possible for our tool to detect that they are unnecessarily
+sequential.
 
-\begin{figure}[H]
+The following code is an alternative to the code in fig. \ref{code:cc1}. Each file is compiled individually
+as its own recipe, followed by a recipe to link the object files together.  This has the same
+performance as the original command.
   \begin{Verbatim}[commandchars=\\\{\},codes={\catcode`$=3\catcode`^=7\catcode`_=8},fontsize=\small,numbers=left,xleftmargin=5mm]
 cc \$(FLAGS) ../lib/common/debug.c
    -o ../lib/common/debug.o
 \textrm{\emph{26 more recipes; one for each .c file that needs to be compiled}}
 cc \$(FLAGS) \$(OBJ\_FILES) -o zstd
 \end{Verbatim}
-  \caption{An alternative to the code in fig. \ref{code:cc1}. Each file is compiled individually
-    as its own recipe, followed by a recipe to link the object files together.  This has the same
-    performance as the original command.}
-\label{code:cc5}
-\end{figure}
-
-\begin{figure}[H]
+  
+The following code is an alternative to the code in fig. \ref{code:cc2}. Each file is compiled individually
+  as its own recipe, followed by a recipe to link the object files together.  This has the same
+  performance as the original command.
   \begin{Verbatim}[commandchars=\\\{\},codes={\catcode`$=3\catcode`^=7\catcode`_=8},fontsize=\small,numbers=left,xleftmargin=5mm]
 cc \$(FLAGS) common/debug.c -o common/debug.o1
 \textrm{\emph{29 more recipes; one for each .c file that needs to be compiled}}
 cc \$(FLAGS) \$(OBJ\_FILES) -shared
    -o libzstd.so.1.3.7
 \end{Verbatim}
-  \caption{An alternative to the code in fig. \ref{code:cc2}. Each file is compiled individually
-    as its own recipe, followed by a recipe to link the object files together.  This has the same
-    performance as the original command.}
-\label{code:cc6}
-\end{figure}
 
-To diagnose this problem using our tool, the user can once again calculate the span of the build
-graph and look at what targets and shell calls constitute the span.  In this case the span is
-made up of many short running compilation jobs.  To check if these compilation jobs may run in
-parallel, our tool will take the original graph, the collected strace data, and build a new graph
-as described in section \ref{sec:revisegraphs}.  The span of the new graph can then be compared
-to the span of the old graph; if the span of the new graph is less than the span of the old graph,
-then the original graph was unnecessarily sequential.  The allow this build to run faster in the
-future, the developer can rewrite the makefile to reflect the organization of the build in
-the new graph.
-
-In the case of zstd, when built with strace; the calculated work for the original graph is 133
-seconds and the span is 45 seconds; which means a parallelism of 2.95.  When this graph is
-rebuilt using strace data and the span is recalculated, it is 8 seconds, which matches with the
-predictions and observations from section \ref{sec:expensive}.
+  These recipes compiling individual files can run in parallel, as shown in the previous section,
+  and our tool can detect this by using the build graph and the system call information gathered
+  by strace and applying the methods described in section \ref{revisegraphs}.  When the span
+  of the new graph is calculated it reflects the fact that these compilations can occur in
+  parallel and is 8 seconds rather than the original 45 seconds; these times are longer than
+  those mentioned in the previous section because strace inflates the running time of the
+  commands it traces.
 
 \subsection{Bad scalability}
 \label{sec:scalability}
