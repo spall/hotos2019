@@ -194,7 +194,7 @@ build-system analysis tool and point to valuable further investigation.
 \label{sec:analysis}
 In this section we describe the tools we use to analyse make builds, diagnose problems related
 to parallelism, and identify places for improvement. In section \ref{sec:makeanalysis} we
-discuss the modified version of GNU Make \cite{gnumake4.2} we use to record enough information about a
+discuss the modified version of GNU Make \cite{gnumakemanual} we use to record enough information about a
 project's build to reconstruct the build graph during a post-mortem analysis.
 In section \ref{sec:straceinstr} we discuss how we use a slightly modified version of strace to
 record all of the system calls made during the project's build and then use the system calls
@@ -205,7 +205,7 @@ a new graph with potentially more parallelism.
 \subsection{Make analysis and instrumentation}
 \label{sec:makeanalysis}
 
-To collect the desired level of information from a run of GNU Make \cite{gnumake4.2}, we run it with the
+To collect the desired level of information from a run of GNU Make \cite{gnumakemanual}, we run it with the
 debug level of 'verbose', use our own wrappers, which print additional information, and use
 a modified version of make which prints directory and timing information for each shell command run.
 All of this information is written to a file and later used to reconstruct
