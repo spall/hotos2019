@@ -9,8 +9,14 @@
 % figures and tables should not require magnification, may contain color but should be
 % legible in black and white
 
-\documentclass[sigplan,10pt,review,authorversion]{acmart}\settopmatter{printfolios=true,printccs=false,printacmref=false}
-
+\documentclass[sigconf,10pt,review,authorversion]{acmart}\settopmatter{printfolios=true,printccs=false,printacmref=false}
+\usepackage{geometry}
+\geometry{reset, twoside=true, head=13pt,
+     paperwidth=8.5in, paperheight=11in,
+     includeheadfoot, columnsep=2pc,
+     top=57pt, bottom=73pt, inner=72pt, outer=72pt,
+     marginparwidth=2pc,heightrounded
+     }
 \citestyle{acmnumeric}
 
 % REMOVE FOR ACCEPTED
