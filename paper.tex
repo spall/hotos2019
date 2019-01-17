@@ -143,7 +143,7 @@ into software that's slow to build. This problem is such a cliche that
 it appears in comics, but it's also such a problem that companies
 routinely outfit developers with the beefiest machines possible---all
 to compile software projects faster. Fortunately, for most systems and
-languages, compiling software is a classic example of embarassing
+languages, compiling software is a classic example of embarrassing
 parallelism. As a result, developers who spend much of their time
 compiling large software projects use highly parallel systems to do so
 \cite{regehr-tweet}.
@@ -192,7 +192,7 @@ build-system analysis tool and point to valuable further investigation.
 
 \section{Analysis tool}
 \label{sec:analysis}
-In this section we describe the tools we use to analyse make builds, diagnose problems related
+In this section we describe the tools we use to analyze make builds, diagnose problems related
 to parallelism, and identify places for improvement. In section \ref{sec:makeanalysis} we
 discuss the modified version of GNU Make \cite{gnumakemanual} we use to record enough information about a
 project's build to reconstruct the build graph during a post-mortem analysis.
@@ -367,7 +367,7 @@ the span of the graph excluding its most expensive member any number of times.  
 in the case where decreasing the running time of a single task gives the build graph a new span
 path with a similarly long running time, which is dominated by a different long running command.
 
-Facebook's zstd project \cite{zstd1.3.7} has a build that exhibits this property.  When we used our tool to analyse
+Facebook's zstd project \cite{zstd1.3.7} has a build that exhibits this property.  When we used our tool to analyze
 the span of zstd's build we saw that it is dominated by a single call to cc; see fig. \ref{code:cc1}.
 
 \begin{figure}[H]
@@ -387,7 +387,7 @@ see fig. \ref{code:cc2}.
   cc \$(FLAGS) common/debug.c \textrm{\emph{29 more .c files}}
     -o libzstd.so.1.3.7
 \end{Verbatim}
-\caption{A long running cc command which was responsible for aproximately 100\% of zstd's span when the command in fig. \ref{code:cc1} is removed.
+\caption{A long running cc command which was responsible for approximately 100\% of zstd's span when the command in fig. \ref{code:cc1} is removed.
 This command compiled and linked 30 files.}
 \label{code:cc2}
 \end{figure}
@@ -499,7 +499,7 @@ cc \$(FLAGS) \$(OBJ\_FILES) -shared
 
 Some projects may exhibit ample potential parallelism but not achieve
 that potential parallelism in practice.  LLVM~\citep{LLVM:CGO04} is
-the largest project we analysed, with a calculated work of
+the largest project we analyzed, with a calculated work of
 approximately 12584 seconds, or 3.5 hours, and a predicted span of 305
 seconds, or 5 minutes (\verb|strace| instrumentation was disabled for
 this measurement). With a work of 3.5 hours and a span of 5 minutes,
@@ -526,7 +526,7 @@ achieve as much parallel scaling as we would hope. This suggests that
 although the build system is able to provide adequate parallelism, the
 underlying Linux OS and \verb|make| job scheduling fail to take
 advantage. To enable better scaling, potential sources of contention
-such as the filesystem must be examined.
+such as the file system must be examined.
 
 
 % say something about brent's theorem
