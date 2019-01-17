@@ -457,8 +457,8 @@ discover that these recipes don't actually need to run in parallel.
 In the previous section we discussed zstd's build, which turned out to be unnecessarily sequential
 because two single shell calls which compiled and linked many files at once could be broken up
 into many parallel compilation jobs which could then be linked after.  These two commands could
-have been written as follows in fig. \ref{code:cc5} and fig. \ref{code:cc6} respectively, instead of as they were
-originally in fig. \ref{code:cc1} and fig. \ref{code:cc2} and would have resulted in the same
+have been written as follows, respectively, instead of as they were
+originally in fig. \ref{code:cc1} and fig. \ref{code:cc2}, and would have resulted in the same
 build performance, but would make it possible for our tool to detect that they are unnecessarily
 sequential.
 
@@ -484,7 +484,7 @@ cc \$(FLAGS) \$(OBJ\_FILES) -shared
 
   These recipes compiling individual files can run in parallel, as shown in the previous section,
   and our tool can detect this by using the build graph and the system call information gathered
-  by strace and applying the methods described in section \ref{revisegraphs}.  When the span
+  by strace and applying the methods described in section \ref{sec:revisegraphs}.  When the span
   of the new graph is calculated it reflects the fact that these compilations can occur in
   parallel and is 8 seconds rather than the original 45 seconds; these times are longer than
   those mentioned in the previous section because strace inflates the running time of the
