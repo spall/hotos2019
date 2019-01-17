@@ -547,23 +547,32 @@ linked, or changing the compiler so it is capable of compiling the file faster.
 A faster compiler would likely have the additional benefit of not only decreasing the span
 of the project but also likely decreasing the work of the project.
 
-Google's protocol buffers project \cite{protobufs3.6.1} exhibited this behavior.  It's work was calculated
-to be about 16.7 minutes and it had a relatively
-long predicted span of 43.7 seconds, which was dominated by a call to g++ compiling
-a single file.  When the analysis applied in section \ref{sec:expensive} is applied
-to protocol buffers' build, we learn that the top three spans are dominated by the
-single file compilations of the files in fig. \ref{code:g++1}.  If the g++ compilations
-of these three files were not in the build's span the new span would be about 20s,
-roughly half of the original span.  Speeding up the compilation of these three files
-would be a good place to begin improving the parallelism of this build.
+Google's protocol buffers project \cite{protobufs3.6.1} exhibited this
+behavior.  It's work was calculated to be about 16.7 minutes and it
+had a relatively long predicted span of 43.7 seconds, which was
+dominated by a call to g++ compiling a single file.  When the analysis
+applied in section \ref{sec:expensive} is applied to protocol buffers'
+build, we learn that the top three spans are dominated by the single
+file compilations of the files in fig. \ref{code:g++1}.  If the g++
+compilations of these three files were not in the build's span the new
+span would be about 20s, roughly half of the original span.  Speeding
+up the compilation of these three files would be a good place to begin
+improving the parallelism of this build, perhaps by breaking
+individual files into multiple files. Our tool is automatically able
+to pinpoint where this would be profitable, and to show that further
+efforts past these three would have diminishing returns.
 
-\begin{figure}[H]
-\begin{Verbatim}[commandchars=\\\{\},codes={\catcode`$=3\catcode`^=7\catcode`_=8},fontsize=\small]
-  google/protobuf/descriptor.cc
-  google/protobuf/descriptor.pb.cc
-  google/protobuf/compiler/cpp/cpp\_message.cc
+\begin{figure}[t]
+\begin{Verbatim}[fontsize=\small]
+[span: 42.7; 38.7]
+ Longest part of span is `g++ descriptor.cc`
+Without this: [span: 30.45; 26.36]
+ Longest part of span is `g++ descriptor.pb.cc`
+Without this: [span: 28.73; 26.35]
+ Longest part of span is `g++ cpp_message.cc`
+Without this: [span: 19.78; 17.4]
 \end{Verbatim}
-\caption{The compilation of these 3 files dominate the longest 3 spans.}
+\caption{Output of our tool describing the protobuf build (simplified)}
 \label{code:g++1}
 \end{figure}
 
