@@ -3,3 +3,7 @@
 paper.pdf
 *.bbl
 *.out
+*.blg
+*.fdb_latexmk
+*.fls
+
